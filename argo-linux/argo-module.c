@@ -3085,7 +3085,7 @@ argo_release(struct inode *inode, struct file *f)
          */
             case ARGO_STATE_LISTENING:
             {
-                spin_lock (&p->r->sponsor->pending_recv_lock);
+                spin_lock_irqsave(&p->r->sponsor->pending_recv_lock, flags);
 
                 list_for_each_entry_safe(pending, t,
                                          &p->r->sponsor->pending_recv_list,
@@ -3102,7 +3102,8 @@ argo_release(struct inode *inode, struct file *f)
                         kfree(pending);
                     }
                 }
-                spin_unlock(&p->r->sponsor->pending_recv_lock);
+                spin_unlock_irqrestore(&p->r->sponsor->pending_recv_lock,
+				       flags);
                 break;
             }
             case ARGO_STATE_CONNECTED:
