@@ -2212,6 +2212,8 @@ argo_recv_stream(struct argo_private *p, void *_buf, int len, int recv_flags,
         spin_lock_irqsave(&p->pending_recv_lock, flags);
         while ( !list_empty(&p->pending_recv_list) && len )
         {
+            int error = 0;
+
             pending = list_first_entry(&p->pending_recv_list,
                                        struct pending_recv, node);
 
@@ -2237,11 +2239,16 @@ argo_recv_stream(struct argo_private *p, void *_buf, int len, int recv_flags,
             }
 
             ret = copy_to_user(buf, &pending->data[pending->data_ptr], to_copy);
-            if ( ret )
+            if ( ret ) {
                 pr_err("ARGO - copy_to_user failed: buf: %p other: %p to_copy: %lu pending %p data_ptr %lu data: %p ret: %d\n",
                     buf, &pending->data[pending->data_ptr], to_copy, pending,
                     pending->data_ptr, pending->data, ret);
-                /* FIXME: error exit action here? */
+                /* Asked to copy to_copy, but only copied to_copy - ret. */
+                to_copy -= ret;
+                /* Since we had a fault, can no longer eat the entire buffer. */
+                eat = 0;
+                error = 1;
+            }
 
             spin_lock_irqsave(&p->pending_recv_lock, flags);
 
@@ -2268,6 +2275,9 @@ argo_recv_stream(struct argo_private *p, void *_buf, int len, int recv_flags,
             buf += to_copy;
             count += to_copy;
             len -= to_copy;
+
+            if (error)
+                break;
         }
         spin_unlock_irqrestore(&p->pending_recv_lock, flags);
 
