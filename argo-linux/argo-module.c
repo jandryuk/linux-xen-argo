@@ -2238,9 +2238,9 @@ argo_recv_stream(struct argo_private *p, void *_buf, int len, int recv_flags,
 
             ret = copy_to_user(buf, &pending->data[pending->data_ptr], to_copy);
             if ( ret )
-                pr_err("ARGO - copy_to_user failed: buf: %p other: %p to_copy: %lu pending %p data_ptr %lu data: %p\n",
+                pr_err("ARGO - copy_to_user failed: buf: %p other: %p to_copy: %lu pending %p data_ptr %lu data: %p ret: %d\n",
                     buf, &pending->data[pending->data_ptr], to_copy, pending,
-                    pending->data_ptr, pending->data);
+                    pending->data_ptr, pending->data, ret);
                 /* FIXME: error exit action here? */
 
             spin_lock_irqsave(&p->pending_recv_lock, flags);
