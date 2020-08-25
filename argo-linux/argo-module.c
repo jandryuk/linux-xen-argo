@@ -2182,18 +2182,14 @@ argo_recv_stream(struct argo_private *p, void *_buf, int len, int recv_flags,
     struct pending_recv *pending;
     uint8_t *buf = (void *) _buf;
 
-    read_lock(&list_lock);
-
     switch (p->state)
     {
         case ARGO_STATE_DISCONNECTED:
         {
-            read_unlock(&list_lock);
             return -EPIPE;
         }
         case ARGO_STATE_CONNECTING:
         {
-            read_unlock(&list_lock);
             return -ENOTCONN;
         }
         case ARGO_STATE_CONNECTED:
@@ -2201,7 +2197,6 @@ argo_recv_stream(struct argo_private *p, void *_buf, int len, int recv_flags,
             break;
         default:
         {
-            read_unlock(&list_lock);
             return -EINVAL;
         }
     }
@@ -2281,8 +2276,6 @@ argo_recv_stream(struct argo_private *p, void *_buf, int len, int recv_flags,
         }
         spin_unlock_irqrestore(&p->pending_recv_lock, flags);
 
-        read_unlock(&list_lock);
-
 #if 1
         if ( schedule_irq )
             argo_fake_irq ();
@@ -2312,9 +2305,6 @@ argo_recv_stream(struct argo_private *p, void *_buf, int len, int recv_flags,
 
         if ( !len )
             return count;
-
-
-        read_lock (&list_lock);
     }
 }
 
