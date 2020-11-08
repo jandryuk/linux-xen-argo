@@ -3590,8 +3590,8 @@ argo_poll(struct file *f, poll_table * pt)
 {
 //FIXME
     unsigned int mask = 0;
+    unsigned long flags;
     struct argo_private *p = f->private_data;
-    read_lock(&list_lock);
 
     switch (p->ptype)
     {
@@ -3603,8 +3603,10 @@ argo_poll(struct file *f, poll_table * pt)
                 case ARGO_STATE_BOUND:
                     poll_wait(f, &p->readq, pt);
                     mask |= POLLOUT | POLLWRNORM;
+                    spin_lock_irqsave(&p->r->lock, flags);
                     if ( p->r->ring->tx_ptr != p->r->ring->rx_ptr )
                         mask |= POLLIN | POLLRDNORM;
+                    spin_unlock_irqrestore(&p->r->lock, flags);
                     break;
                 default:
                     break;
@@ -3618,8 +3620,10 @@ argo_poll(struct file *f, poll_table * pt)
                     break;
                 case ARGO_STATE_LISTENING:
                     poll_wait(f, &p->readq, pt);
+                    spin_lock_irqsave(&p->pending_recv_lock, flags);
                     if (!list_empty(&p->pending_recv_list))
                         mask |= POLLIN | POLLRDNORM;
+                    spin_unlock_irqrestore(&p->pending_recv_lock, flags);
                     break;
                 case ARGO_STATE_ACCEPTED:
                 case ARGO_STATE_CONNECTED:
@@ -3627,8 +3631,10 @@ argo_poll(struct file *f, poll_table * pt)
                     poll_wait(f, &p->writeq, pt);
                     if ( !p->send_blocked )
                         mask |= POLLOUT | POLLWRNORM;
-                    if ( !list_empty(&p->pending_recv_list) )
+                    spin_lock_irqsave(&p->pending_recv_lock, flags);
+                    if (!list_empty(&p->pending_recv_list))
                         mask |= POLLIN | POLLRDNORM;
+                    spin_unlock_irqrestore(&p->pending_recv_lock, flags);
                     break;
                 case ARGO_STATE_CONNECTING:
                     poll_wait(f, &p->writeq, pt);
@@ -3643,7 +3649,6 @@ argo_poll(struct file *f, poll_table * pt)
             break;
     }
 
-    read_unlock(&list_lock);
     return mask;
 }
 
